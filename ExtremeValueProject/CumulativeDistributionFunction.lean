@@ -152,6 +152,55 @@ lemma continuousAt_iff (F : CumulativeDistributionFunction) (x : ℝ) :
     ContinuousAt F x ↔ F.measure {x} = 0 := by
   rw [StieltjesFunction.measure_singleton]
   rw [Monotone.continuousAt_iff_leftLim_eq_rightLim F.mono']
+
+  -- Now we need: leftLim F x = rightLim F x ↔ ofReal (F x - leftLim F x) = 0
+  have h_right : Function.rightLim F x = F x := F.toStieltjesFunction.rightLim_eq
+  rw [h_right]
+  constructor
+  · intro h
+    rw [h]
+    simp
+  · intro h
+    have h_le : Function.leftLim F x ≤ F x := F.mono'.leftLim_le
+    have h_sub : F x - Function.leftLim F x = 0 := by
+      have h_nonneg : 0 ≤ F x - Function.leftLim F x := sub_nonneg.mpr h_le
+      exact ENNReal.toReal_eq_zero_iff.mp (ENNReal.ofReal_eq_zero.mp h) |>.resolve_right
+        (ne_top_of_le_ne_top (by simp) (ENNReal.ofReal_le_ofReal h_nonneg))
+    linarith
+
+
+  -- Rewrite function value in place of right limit
+  rw [StieltjesFunction.rightLim_eq]
+
+  constructor
+
+  -- Left-to-right: if left limit equals function value, then the difference is zero
+  · intro h
+    rw [h]
+    simp only [sub_self]
+    exact ENNReal.ofReal_zero
+
+  -- Right-to-left: if ENNReal.ofReal of the difference is zero, then difference is zero
+  · intro h
+    -- The key insight: for a non-negative value, ofReal is zero iff the input is zero
+    have h1 : F.toStieltjesFunction x - Function.leftLim F.toStieltjesFunction x = 0 := by
+      apply ENNReal.ofReal_eq_zero.mp at h
+      -- Need to prove the difference is non-negative
+
+      have h2: F.toStieltjesFunction x - Function.leftLim F.toStieltjesFunction x ≥ 0 := by
+        linarith [Function.monotone_left_lim]
+        apply Monotone.leftLim_le
+
+        apply MeasureTheory.FiniteMeasure.monotone_cdf'
+      apply sub_nonneg.mpr
+      -- This uses monotonicity of the function
+      apply Function.monotone_leftLim
+      exact F.mono'
+
+    -- Now we can conclude the left and right limits are equal
+    rw [sub_eq_zero] at h1
+    exact h1.symm
+
   sorry -- **Issue #11**
 
 /-- Lemma 4.7 (cdf-convergence-from-convergence-in-distribution) in blueprint:
